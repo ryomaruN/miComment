@@ -1,0 +1,46 @@
+version: '3'
+
+services:
+  postgresql:
+    container_name: hightide_db
+    build:
+      context: ./docker/postgresql
+      dockerfile: Dockerfile
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: '--encoding=UTF-8 --locale=C'
+    networks:
+      - container_link
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data:rw
+    tty: true
+  
+  app:
+    container_name: hightide_app
+    build:
+      context: ./docker/app
+      dockerfile: Dockerfile
+    depends_on:
+      - postgresql
+    networks:
+      - container_link
+    volumes:
+      - ./:/go/src/app:rw
+    tty: true
+    logging:
+      driver: json-file
+      options:
+        max-size: '5m'
+        max-file: '1'
+
+networks:
+  default:
+    name: bridge
+  container_link:
+    name: devenv.docker.internal
+
+volumes:
+  postgresql_data:
+    driver: local
