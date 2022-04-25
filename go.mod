@@ -1,6 +1,6 @@
-module miComment
+module github.com/ryomaruN/miComment
 
-go 1.18
+go 1.17
 
 require (
 	cloud.google.com/go/texttospeech v1.3.0

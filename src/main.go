@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
@@ -22,6 +24,13 @@ func loadEnv() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	discord, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
+
+	if err != nil {
+		fmt.Println(err)
+	}
+	// dummy
+	fmt.Println(discord)
 
 }
 
