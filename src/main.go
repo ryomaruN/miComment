@@ -16,6 +16,7 @@ import (
 var (
 	// vcsession         *discordgo.VoiceConnection
 	HelloWorld        = "helloworld"
+	Channels          = "channels"
 	ChannelVoiceJoin  = "vcjoin"
 	ChannelVoiceLeave = "vcleave"
 )
@@ -80,6 +81,23 @@ func onMessageCreate(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 	switch {
 	case strings.HasPrefix(mc.Content, fmt.Sprintf("%s %s", fmt.Sprintf("<@%s>", os.Getenv("CLIENT_ID")), HelloWorld)):
 		sendMessage(ses, mc.ChannelID, "Hello World!")
+
+	case strings.HasPrefix(mc.Content, fmt.Sprintf("%s %s", fmt.Sprintf("<@%s>", os.Getenv("CLIENT_ID")), Channels)):
+		st, err := ses.GuildChannels(mc.GuildID)
+		if err != nil {
+			fmt.Println("channels command error")
+			fmt.Println(err)
+		}
+
+		var lines []string
+		for _, v := range st {
+			line := fmt.Sprintf("Name: %s(%s) - ID: %s", v.Name, v.Type, v.ID)
+			lines = append(lines, line)
+		}
+		joinedLines := strings.Join(lines, "\n")
+		fmt.Println(joinedLines)
+
+		sendMessage(ses, mc.ChannelID, joinedLines)
 	}
 }
 
