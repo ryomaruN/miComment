@@ -69,6 +69,10 @@ func loadEnv() {
 	}
 }
 
+func commandIs(command string, ses *discordgo.Session, mc *discordgo.MessageCreate) bool {
+	return strings.HasPrefix(mc.Content, fmt.Sprintf("%s %s", fmt.Sprintf("<@%s>", os.Getenv("CLIENT_ID")), command))
+}
+
 // メッセージ受信ハンドラ
 func onMessageCreate(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 	// if err != nil {
@@ -79,25 +83,10 @@ func onMessageCreate(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 	fmt.Printf("%20s %20s %20s > %s\n", mc.ChannelID, time.Now().Format(time.Stamp), mc.Author.Username, mc.Content)
 
 	switch {
-	case strings.HasPrefix(mc.Content, fmt.Sprintf("%s %s", fmt.Sprintf("<@%s>", os.Getenv("CLIENT_ID")), HelloWorld)):
-		sendMessage(ses, mc.ChannelID, "Hello World!")
-
-	case strings.HasPrefix(mc.Content, fmt.Sprintf("%s %s", fmt.Sprintf("<@%s>", os.Getenv("CLIENT_ID")), Channels)):
-		st, err := ses.GuildChannels(mc.GuildID)
-		if err != nil {
-			fmt.Println("channels command error")
-			fmt.Println(err)
-		}
-
-		var lines []string
-		for _, v := range st {
-			line := fmt.Sprintf("Name: %s(%s) - ID: %s", v.Name, v.Type, v.ID)
-			lines = append(lines, line)
-		}
-		joinedLines := strings.Join(lines, "\n")
-		fmt.Println(joinedLines)
-
-		sendMessage(ses, mc.ChannelID, joinedLines)
+	case commandIs(HelloWorld, ses, mc):
+		sendHelloWorld(ses, mc.ChannelID)
+	case commandIs(Channels, ses, mc):
+		sendChannels(ses, mc)
 	}
 }
 
@@ -109,6 +98,30 @@ func sendMessage(s *discordgo.Session, channelID string, msg string) {
 	if err != nil {
 		log.Println("Error sending message: ", err)
 	}
+}
+
+// コマンド: helloworld
+func sendHelloWorld(ses *discordgo.Session, channelId string) {
+	sendMessage(ses, channelId, "Hello World!")
+}
+
+// コマンド: channels
+func sendChannels(ses *discordgo.Session, mc *discordgo.MessageCreate) {
+	st, err := ses.GuildChannels(mc.GuildID)
+	if err != nil {
+		fmt.Println("channels command error")
+		fmt.Println(err)
+	}
+
+	var lines []string
+	for _, v := range st {
+		line := fmt.Sprintf("Name: %s(%s) - ID: %s", v.Name, v.Type, v.ID)
+		lines = append(lines, line)
+	}
+	joinedLines := strings.Join(lines, "\n")
+	fmt.Println(joinedLines)
+
+	sendMessage(ses, mc.ChannelID, joinedLines)
 }
 
 // Cloud Text-to-Speech API呼び出し
