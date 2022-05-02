@@ -15,10 +15,11 @@ import (
 
 var (
 	// vcsession         *discordgo.VoiceConnection
-	HelloWorld        = "helloworld"
-	Channels          = "channels"
-	ChannelVoiceJoin  = "vcjoin"
-	ChannelVoiceLeave = "vcleave"
+	HelloWorld = "helloworld"
+	Channels   = "channels"
+	Join       = "join"
+	Leave      = "leave"
+	vcsession  *discordgo.VoiceConnection
 )
 
 func main() {
@@ -87,6 +88,10 @@ func onMessageCreate(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 		sendHelloWorld(ses, mc.ChannelID)
 	case commandIs(Channels, ses, mc):
 		sendChannels(ses, mc)
+	case commandIs(Join, ses, mc):
+		joinVC(ses, mc)
+	case commandIs(Leave, ses, mc):
+		leaveVC(ses, mc)
 	}
 }
 
@@ -122,6 +127,53 @@ func sendChannels(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 	fmt.Println(joinedLines)
 
 	sendMessage(ses, mc.ChannelID, joinedLines)
+}
+
+func joinVC(ses *discordgo.Session, mc *discordgo.MessageCreate) {
+	// メッセージを半角スペースで分割
+	separated := strings.Split(mc.Content, " ")
+	if len(separated) < 3 {
+		sendMessage(ses, mc.ChannelID, "フォーマットエラー: 'join ボイスチャンネル名'")
+		return
+	}
+
+	channelName := separated[2]
+
+	st, err := ses.GuildChannels(mc.GuildID)
+
+	if err != nil {
+		sendMessage(ses, mc.ChannelID, "チャンネル情報取得エラー")
+		return
+	}
+
+	var targetChannelId string
+
+	for _, v := range st {
+		if channelName == v.Name {
+			if v.Type != 2 {
+				sendMessage(ses, mc.ChannelID, fmt.Sprintf("ボイスチャンネルではない: %s", channelName))
+				return
+			}
+			targetChannelId = v.ID
+			break
+		}
+	}
+
+	if targetChannelId == "" {
+		sendMessage(ses, mc.ChannelID, fmt.Sprintf("そんなチャンネルはない: %s", channelName))
+		return
+	}
+
+	vcsession, _ = ses.ChannelVoiceJoin(mc.GuildID, targetChannelId, false, false)
+}
+
+func leaveVC(ses *discordgo.Session, mc *discordgo.MessageCreate) {
+	if vcsession == nil {
+		sendMessage(ses, mc.ChannelID, "チャンネルに未参加")
+		return
+	}
+
+	vcsession.Disconnect()
 }
 
 // Cloud Text-to-Speech API呼び出し
