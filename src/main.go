@@ -15,11 +15,13 @@ import (
 
 var (
 	// vcsession         *discordgo.VoiceConnection
-	HelloWorld = "helloworld"
-	Channels   = "channels"
-	Join       = "join"
-	Leave      = "leave"
-	vcsession  *discordgo.VoiceConnection
+	HelloWorld   = "helloworld"
+	Channels     = "channels"
+	Join         = "join"
+	Leave        = "leave"
+	Watch        = "watch"
+	vcsession    *discordgo.VoiceConnection
+	watchChannel = ""
 )
 
 func main() {
@@ -92,6 +94,8 @@ func onMessageCreate(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 		joinVC(ses, mc)
 	case commandIs(Leave, ses, mc):
 		leaveVC(ses, mc)
+	case commandIs(Watch, ses, mc):
+		setWatchChannel(ses, mc)
 	}
 }
 
@@ -137,7 +141,7 @@ func joinVC(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 		return
 	}
 
-	channelName := separated[2]
+	vcOption := separated[2]
 
 	st, err := ses.GuildChannels(mc.GuildID)
 
@@ -149,9 +153,9 @@ func joinVC(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 	var targetChannelId string
 
 	for _, v := range st {
-		if channelName == v.Name {
-			if v.Type != 2 {
-				sendMessage(ses, mc.ChannelID, fmt.Sprintf("ボイスチャンネルではない: %s", channelName))
+		if vcOption == v.Name {
+			if v.Type != discordgo.ChannelTypeGuildVoice {
+				sendMessage(ses, mc.ChannelID, fmt.Sprintf("ボイスチャンネルではない: %s", vcOption))
 				return
 			}
 			targetChannelId = v.ID
@@ -160,7 +164,7 @@ func joinVC(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 	}
 
 	if targetChannelId == "" {
-		sendMessage(ses, mc.ChannelID, fmt.Sprintf("そんなチャンネルはない: %s", channelName))
+		sendMessage(ses, mc.ChannelID, fmt.Sprintf("そんなチャンネルはない: %s", vcOption))
 		return
 	}
 
@@ -174,6 +178,34 @@ func leaveVC(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 	}
 
 	vcsession.Disconnect()
+}
+
+func setWatchChannel(ses *discordgo.Session, mc *discordgo.MessageCreate) {
+	separated := strings.Split(mc.Content, " ")
+	if len(separated) < 3 {
+		sendMessage(ses, mc.ChannelID, "フォーマットエラー: 'watch テキストチャンネル名'")
+		return
+	}
+
+	tcOption := separated[2]
+
+	st, err := ses.GuildChannels(mc.GuildID)
+
+	if err != nil {
+		sendMessage(ses, mc.ChannelID, "チャンネル情報取得エラー")
+		return
+	}
+
+	for _, v := range st {
+		if tcOption == v.Name {
+			if v.Type != discordgo.ChannelTypeGuildText {
+				sendMessage(ses, mc.ChannelID, fmt.Sprintf("テキストチャンネルではない: %s", tcOption))
+				return
+			}
+			watchChannel = v.ID
+			break
+		}
+	}
 }
 
 // Cloud Text-to-Speech API呼び出し
