@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -9,12 +11,14 @@ import (
 	"syscall"
 	"time"
 
+	texttospeech "cloud.google.com/go/texttospeech/apiv1"
+	"github.com/bwmarrin/dgvoice"
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
+	texttospeechpb "google.golang.org/genproto/googleapis/cloud/texttospeech/v1"
 )
 
 var (
-	// vcsession         *discordgo.VoiceConnection
 	HelloWorld   = "helloworld"
 	Channels     = "channels"
 	Join         = "join"
@@ -84,6 +88,13 @@ func onMessageCreate(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 	// }
 
 	fmt.Printf("%20s %20s %20s > %s\n", mc.ChannelID, time.Now().Format(time.Stamp), mc.Author.Username, mc.Content)
+
+	fmt.Println(mc.ChannelID)
+	fmt.Println(watchChannel)
+	fmt.Println(vcsession != nil)
+	if vcsession != nil && mc.ChannelID == watchChannel {
+		speech(ses, mc)
+	}
 
 	switch {
 	case commandIs(HelloWorld, ses, mc):
@@ -189,6 +200,8 @@ func setWatchChannel(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 
 	tcOption := separated[2]
 
+	fmt.Println("tcOption:" + tcOption)
+
 	st, err := ses.GuildChannels(mc.GuildID)
 
 	if err != nil {
@@ -197,49 +210,61 @@ func setWatchChannel(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 	}
 
 	for _, v := range st {
+		fmt.Println(v.Name)
+		fmt.Println(v.ID)
 		if tcOption == v.Name {
 			if v.Type != discordgo.ChannelTypeGuildText {
 				sendMessage(ses, mc.ChannelID, fmt.Sprintf("テキストチャンネルではない: %s", tcOption))
 				return
 			}
+			fmt.Println(v.ID)
 			watchChannel = v.ID
 			break
 		}
 	}
 }
 
-// Cloud Text-to-Speech API呼び出し
-// func fetchTextToSpeech(text string) {
-// 	ctx := context.Background()
+func speech(ses *discordgo.Session, mc *discordgo.MessageCreate) {
+	fmt.Printf("%sを送ります。", mc.Content)
+	fetchTextToSpeech(mc.Content)
 
-// 	client, err := texttospeech.NewClient(ctx)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	defer client.Close()
+	stop := make(chan bool)
 
-// 	req := texttospeechpb.SynthesizeSpeechRequest{
-// 		Input: &texttospeechpb.SynthesisInput{
-// 			InputSource: &texttospeechpb.SynthesisInput_Text{Text: text},
-// 		},
-// 		Voice: &texttospeechpb.VoiceSelectionParams{
-// 			LanguageCode: "ja-JP",
-// 			SsmlGender:   texttospeechpb.SsmlVoiceGender_FEMALE,
-// 		},
-// 		AudioConfig: &texttospeechpb.AudioConfig{
-// 			AudioEncoding: texttospeechpb.AudioEncoding_MP3,
-// 		},
-// 	}
+	dgvoice.PlayAudioFile(vcsession, "output.mp3", stop)
+}
 
-// 	resp, err := client.SynthesizeSpeech(ctx, &req)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
+//Cloud Text-to-Speech API呼び出し
+func fetchTextToSpeech(text string) {
+	ctx := context.Background()
 
-// 	filename := "output.mp3"
-// 	err = ioutil.WriteFile(filename, resp.AudioContent, 0644)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	fmt.Printf("Audio content written to file: %v\n", filename)
-// }
+	client, err := texttospeech.NewClient(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
+
+	req := texttospeechpb.SynthesizeSpeechRequest{
+		Input: &texttospeechpb.SynthesisInput{
+			InputSource: &texttospeechpb.SynthesisInput_Text{Text: text},
+		},
+		Voice: &texttospeechpb.VoiceSelectionParams{
+			LanguageCode: "ja-JP",
+			SsmlGender:   texttospeechpb.SsmlVoiceGender_FEMALE,
+		},
+		AudioConfig: &texttospeechpb.AudioConfig{
+			AudioEncoding: texttospeechpb.AudioEncoding_MP3,
+		},
+	}
+
+	resp, err := client.SynthesizeSpeech(ctx, &req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	filename := "output.mp3"
+	err = ioutil.WriteFile(filename, resp.AudioContent, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Audio content written to file: %v\n", filename)
+}
