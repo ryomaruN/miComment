@@ -80,33 +80,38 @@ func commandIs(command string, ses *discordgo.Session, mc *discordgo.MessageCrea
 	return strings.HasPrefix(mc.Content, fmt.Sprintf("%s %s", fmt.Sprintf("<@%s>", os.Getenv("CLIENT_ID")), command))
 }
 
+func isMension(ses *discordgo.Session, mc *discordgo.MessageCreate) bool {
+	return strings.HasPrefix(mc.Content, "<@")
+}
+
 // メッセージ受信ハンドラ
 func onMessageCreate(ses *discordgo.Session, mc *discordgo.MessageCreate) {
-	// if err != nil {
-	// 	log.Println("Error getting channel: ", err)
-	// 	return
-	// }
-
 	fmt.Printf("%20s %20s %20s > %s\n", mc.ChannelID, time.Now().Format(time.Stamp), mc.Author.Username, mc.Content)
 
-	fmt.Println(mc.ChannelID)
-	fmt.Println(watchChannel)
 	fmt.Println(vcsession != nil)
-	if vcsession != nil && mc.ChannelID == watchChannel {
-		speech(ses, mc)
-	}
 
+	// Commands
 	switch {
 	case commandIs(HelloWorld, ses, mc):
 		sendHelloWorld(ses, mc.ChannelID)
+		return
 	case commandIs(Channels, ses, mc):
 		sendChannels(ses, mc)
+		return
 	case commandIs(Join, ses, mc):
 		joinVC(ses, mc)
+		return
 	case commandIs(Leave, ses, mc):
 		leaveVC(ses, mc)
+		return
 	case commandIs(Watch, ses, mc):
 		setWatchChannel(ses, mc)
+		return
+	}
+
+	if vcsession != nil && mc.ChannelID == watchChannel && !isMension(ses, mc) {
+		speech(ses, mc)
+		return
 	}
 }
 
@@ -219,6 +224,7 @@ func setWatchChannel(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 			}
 			fmt.Println(v.ID)
 			watchChannel = v.ID
+			sendMessage(ses, mc.ChannelID, fmt.Sprintf("ここ見るわ: %s", v.Name))
 			break
 		}
 	}
@@ -259,6 +265,7 @@ func fetchTextToSpeech(text string) {
 	resp, err := client.SynthesizeSpeech(ctx, &req)
 	if err != nil {
 		log.Fatal(err)
+		return
 	}
 
 	filename := "output.mp3"
