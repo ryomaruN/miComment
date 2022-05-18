@@ -90,6 +90,10 @@ func onMessageCreate(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 
 	fmt.Println(vcsession != nil)
 
+	if strings.HasPrefix(mc.Content, "!") {
+		return
+	}
+
 	// Commands
 	switch {
 	case commandIs(HelloWorld, ses, mc):
