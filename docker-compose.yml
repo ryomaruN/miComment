@@ -22,8 +22,6 @@ services:
     build:
       context: ./docker/app
       dockerfile: Dockerfile
-    depends_on:
-      - postgresql
     networks:
       - container_link
     volumes:

@@ -240,7 +240,7 @@ func speech(ses *discordgo.Session, mc *discordgo.MessageCreate) {
 
 	stop := make(chan bool)
 
-	dgvoice.PlayAudioFile(vcsession, "output.mp3", stop)
+	dgvoice.PlayAudioFile(vcsession, "./output.mp3", stop)
 }
 
 //Cloud Text-to-Speech API呼び出し
